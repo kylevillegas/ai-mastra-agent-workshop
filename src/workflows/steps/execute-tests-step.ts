@@ -54,7 +54,10 @@ export const executeTestsStep = createStep({
           const pollForCompletion = async (): Promise<any> => {
             const task = await client.tasks.getTask(taskResponse.id);
 
-            if (task.status === "started" || task.status === "paused") {
+            // Task is still in progress if it's not finished or stopped
+            const isInProgress = task.status !== "finished" && task.status !== "stopped";
+
+            if (isInProgress) {
               if (Date.now() - startTime > MAX_POLL_TIME_MS) {
                 throw new Error(
                   `Task ${taskResponse.id} timed out after ${MAX_POLL_TIME_MS / 1000} seconds`
@@ -66,6 +69,7 @@ export const executeTestsStep = createStep({
               return pollForCompletion();
             }
 
+            console.log(`[Poll] Task ${taskResponse.id} completed with status: ${task.status}`);
             return task;
           };
 
@@ -73,7 +77,6 @@ export const executeTestsStep = createStep({
 
           // Determine if the test passed based on the result
           const status = task.isSuccess === true ? "success" : "fail";
-
           return {
             title: testCase.title,
             status: status as "success" | "fail",
